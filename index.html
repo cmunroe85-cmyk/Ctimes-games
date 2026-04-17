@@ -1,48 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>My Monster Catch Game</title>
+<title>Monster Adventure Complete</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body {
   margin: 0;
-  background: #222;
-  color: white;
+  background: #9bbc0f;
+  font-family: monospace;
   text-align: center;
-  font-family: Arial;
 }
 
 canvas {
-  background: #6ecb63;
   display: block;
   margin: auto;
-}
-
-#controls {
-  margin-top: 10px;
+  border: 4px solid black;
+  background: #8bac0f;
 }
 
 button {
-  padding: 12px 18px;
-  font-size: 18px;
-  margin: 4px;
+  padding: 8px;
+  margin: 3px;
+}
+
+#battleBox,
+#starterBox,
+#dialogBox,
+#shopBox {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #111;
+  color: white;
+  display: none;
+  padding: 12px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>My Monster Catch Game</h1>
+<h2>Monster Adventure Complete</h2>
 
 <canvas id="gameCanvas" width="400" height="500"></canvas>
 
-<div id="controls">
+<div>
 <button onclick="move('up')">⬆️</button><br>
 <button onclick="move('left')">⬅️</button>
 <button onclick="move('down')">⬇️</button>
 <button onclick="move('right')">➡️</button>
+<button onclick="openShop()">🛒 Shop</button>
+<button onclick="saveGame()">💾 Save</button>
+<button onclick="loadGame()">📂 Load</button>
+</div>
+
+<div id="starterBox">
+<h3>Choose Your Starter</h3>
+<button onclick="chooseStarter('Leafy')">Leafy</button>
+<button onclick="chooseStarter('Spark')">Spark</button>
+<button onclick="chooseStarter('Rocko')">Rocko</button>
+</div>
+
+<div id="battleBox">
+<h3 id="enemyName"></h3>
+<p id="enemyHP"></p>
+<button onclick="attack()">Fight</button>
+<button onclick="catchMonster()">Catch</button>
+<button onclick="runAway()">Run</button>
+</div>
+
+<div id="dialogBox">
+<p id="dialogText"></p>
+<button onclick="closeDialog()">OK</button>
+</div>
+
+<div id="shopBox">
+<h3>Shop</h3>
+<p>Balls: <span id="ballCount"></span></p>
+<button onclick="buyBall()">Buy Ball</button>
+<button onclick="closeShop()">Close</button>
 </div>
 
 <script>
@@ -53,90 +91,101 @@ const ctx = canvas.getContext("2d");
 let player = {
   x: 180,
   y: 230,
-  size: 20
+  level: 1,
+  xp: 0,
+  hp: 10
 };
 
-let monster = {
-  x: Math.random() * 360,
-  y: Math.random() * 460,
-  size: 20,
-  alive: true
+let starter = null;
+
+let maps = ["Town","Route","City","Gym"];
+
+let mapIndex = 0;
+
+let monsters = [
+  { name: "Leafy", hp: 10 },
+  { name: "Spark", hp: 12 },
+  { name: "Rocko", hp: 14 }
+];
+
+let boss = {
+  name: "Gym Leader",
+  hp: 20
 };
 
-let monstersCaught = 0;
+let currentMonster;
 
-function drawPlayer() {
-  ctx.fillStyle = "blue";
-  ctx.fillRect(
-    player.x,
-    player.y,
-    player.size,
-    player.size
-  );
-}
+let balls =
+  parseInt(localStorage.getItem("balls")) || 3;
 
-function drawMonster() {
+let caught =
+  parseInt(localStorage.getItem("caught")) || 0;
 
-  if (!monster.alive) return;
+let inBattle = false;
 
-  ctx.fillStyle = "red";
+function playSound() {
 
-  ctx.fillRect(
-    monster.x,
-    monster.y,
-    monster.size,
-    monster.size
-  );
+  let audio =
+    new Audio(
+      "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEA"
+    );
+
+  audio.play();
 
 }
 
-function drawUI() {
+function drawMap() {
 
-  ctx.fillStyle = "white";
-  ctx.font = "18px Arial";
+  if (maps[mapIndex] === "Town") {
 
-  ctx.fillText(
-    "Caught: " + monstersCaught,
-    10,
-    25
-  );
+    ctx.fillStyle = "#654321";
 
-}
+    ctx.fillRect(50,50,80,80);
 
-function checkCatch() {
+  }
 
-  let dx =
-    player.x - monster.x;
+  if (maps[mapIndex] === "Route") {
 
-  let dy =
-    player.y - monster.y;
+    ctx.fillStyle = "#306230";
 
-  let distance =
-    Math.sqrt(dx * dx + dy * dy);
+    ctx.fillRect(120,150,160,200);
 
-  if (distance < 25) {
+  }
 
-    monster.alive = false;
+  if (maps[mapIndex] === "City") {
 
-    monstersCaught++;
+    ctx.fillStyle = "#333399";
 
-    setTimeout(() => {
+    ctx.fillRect(200,80,100,100);
 
-      monster.x =
-        Math.random() * 360;
+  }
 
-      monster.y =
-        Math.random() * 460;
+  if (maps[mapIndex] === "Gym") {
 
-      monster.alive = true;
+    ctx.fillStyle = "red";
 
-    }, 1000);
+    ctx.fillRect(150,120,100,120);
 
   }
 
 }
 
+function drawPlayer() {
+
+  ctx.fillStyle = "black";
+
+  ctx.fillRect(
+    player.x,
+    player.y,
+    20,
+    20
+  );
+
+}
+
 function move(direction) {
+
+  if (inBattle) return;
 
   if (direction === "up")
     player.y -= 20;
@@ -150,7 +199,304 @@ function move(direction) {
   if (direction === "right")
     player.x += 20;
 
-  checkCatch();
+  changeMap();
+
+  checkEncounter();
+
+}
+
+function changeMap() {
+
+  if (player.y < 0) {
+
+    mapIndex++;
+
+    if (mapIndex >= maps.length)
+      mapIndex = 0;
+
+    player.y = 480;
+
+  }
+
+}
+
+function checkEncounter() {
+
+  if (maps[mapIndex] === "Route") {
+
+    if (Math.random() < 0.25) {
+
+      startBattle();
+
+    }
+
+  }
+
+  if (maps[mapIndex] === "Gym") {
+
+    startBossBattle();
+
+  }
+
+}
+
+function startBattle() {
+
+  inBattle = true;
+
+  currentMonster =
+    monsters[
+      Math.floor(
+        Math.random() *
+        monsters.length
+      )
+    ];
+
+  showBattle();
+
+}
+
+function startBossBattle() {
+
+  inBattle = true;
+
+  currentMonster = boss;
+
+  showBattle();
+
+}
+
+function showBattle() {
+
+  document.getElementById(
+    "enemyName"
+  ).innerText =
+    currentMonster.name;
+
+  document.getElementById(
+    "enemyHP"
+  ).innerText =
+    "HP: " +
+    currentMonster.hp;
+
+  document.getElementById(
+    "battleBox"
+  ).style.display =
+    "block";
+
+  playSound();
+
+}
+
+function attack() {
+
+  currentMonster.hp--;
+
+  player.xp++;
+
+  if (player.xp >= 5) {
+
+    player.level++;
+
+    player.xp = 0;
+
+    alert(
+      "Level Up!"
+    );
+
+  }
+
+  if (player.level === 5) {
+
+    alert(
+      "Your monster evolved!"
+    );
+
+  }
+
+  document.getElementById(
+    "enemyHP"
+  ).innerText =
+    "HP: " +
+    currentMonster.hp;
+
+  if (currentMonster.hp <= 0) {
+
+    alert("Victory!");
+
+    endBattle();
+
+  }
+
+}
+
+function catchMonster() {
+
+  if (balls <= 0) {
+
+    alert("No balls!");
+
+    return;
+
+  }
+
+  balls--;
+
+  caught++;
+
+  localStorage.setItem(
+    "caught",
+    caught
+  );
+
+  alert(
+    "Caught!"
+  );
+
+  endBattle();
+
+}
+
+function runAway() {
+
+  endBattle();
+
+}
+
+function endBattle() {
+
+  inBattle = false;
+
+  document.getElementById(
+    "battleBox"
+  ).style.display =
+    "none";
+
+}
+
+function chooseStarter(name) {
+
+  starter = name;
+
+  alert(
+    "You chose " + name
+  );
+
+  document.getElementById(
+    "starterBox"
+  ).style.display =
+    "none";
+
+}
+
+function openShop() {
+
+  document.getElementById(
+    "shopBox"
+  ).style.display =
+    "block";
+
+  document.getElementById(
+    "ballCount"
+  ).innerText =
+    balls;
+
+}
+
+function closeShop() {
+
+  document.getElementById(
+    "shopBox"
+  ).style.display =
+    "none";
+
+}
+
+function buyBall() {
+
+  balls++;
+
+  localStorage.setItem(
+    "balls",
+    balls
+  );
+
+  document.getElementById(
+    "ballCount"
+  ).innerText =
+    balls;
+
+}
+
+function saveGame() {
+
+  localStorage.setItem(
+    "playerX",
+    player.x
+  );
+
+  localStorage.setItem(
+    "playerY",
+    player.y
+  );
+
+  localStorage.setItem(
+    "level",
+    player.level
+  );
+
+  alert("Game Saved");
+
+}
+
+function loadGame() {
+
+  player.x =
+    parseInt(
+      localStorage.getItem(
+        "playerX"
+      )
+    ) || 180;
+
+  player.y =
+    parseInt(
+      localStorage.getItem(
+        "playerY"
+      )
+    ) || 230;
+
+  player.level =
+    parseInt(
+      localStorage.getItem(
+        "level"
+      )
+    ) || 1;
+
+  alert("Game Loaded");
+
+}
+
+function drawUI() {
+
+  ctx.fillStyle = "black";
+
+  ctx.fillText(
+    "Map: " + maps[mapIndex],
+    10,
+    20
+  );
+
+  ctx.fillText(
+    "Lvl: " + player.level,
+    10,
+    40
+  );
+
+  ctx.fillText(
+    "Caught: " + caught,
+    10,
+    60
+  );
 
 }
 
@@ -163,9 +509,9 @@ function gameLoop() {
     canvas.height
   );
 
-  drawPlayer();
+  drawMap();
 
-  drawMonster();
+  drawPlayer();
 
   drawUI();
 
@@ -174,6 +520,11 @@ function gameLoop() {
   );
 
 }
+
+document.getElementById(
+  "starterBox"
+).style.display =
+  "block";
 
 gameLoop();
 
