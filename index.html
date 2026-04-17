@@ -1,399 +1,421 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Cinnamon</title>
-
-<meta name="viewport"
-content="width=device-width, initial-scale=1">
-
-<style>
-body {
-  margin: 0;
-  background: black;
-  color: white;
-  text-align: center;
-  font-family: Arial;
-}
-
-canvas {
-  display: block;
-  margin: auto;
-  border: 3px solid white;
-  width: 100vw;
-  height: 85vh;
-}
-
-button {
-  padding: 10px;
-  margin: 3px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PokéQuest - Mini Pokémon-like Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        #game {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #0a3d0a;
+            overflow: hidden;
+        }
+        canvas {
+            image-rendering: pixelated;
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #dialog {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            border: 4px solid #ffcc00;
+            padding: 15px 20px;
+            max-width: 90%;
+            border-radius: 8px;
+            display: none;
+            pointer-events: all;
+            font-size: 18px;
+            line-height: 1.4;
+        }
+        button {
+            background: #ffcc00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #battle-ui {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .health-bar {
+            height: 12px;
+            background: #333;
+            border: 2px solid #fff;
+            position: relative;
+        }
+        .health {
+            height: 100%;
+            background: #22ff22;
+            width: 100%;
+            transition: width 0.3s;
+        }
+    </style>
 </head>
-
 <body>
-
-<h2>Cinnamon</h2>
-
-<canvas id="gameCanvas"></canvas>
-
-<div>
-<button onclick="JOYPAD_INPUT('up')">⬆️</button><br>
-<button onclick="JOYPAD_INPUT('left')">⬅️</button>
-<button onclick="JOYPAD_INPUT('down')">⬇️</button>
-<button onclick="JOYPAD_INPUT('right')">➡️</button>
-<button onclick="CALL_ATTACK()">⚔️ Attack</button>
-<button onclick="CALL_SAVE()">💾 Save</button>
-<button onclick="CALL_LOAD()">📂 Load</button>
-</div>
-
-<div id="battleBox"
-style="
-display:none;
-position:fixed;
-bottom:0;
-width:100%;
-background:black;
-padding:12px;
-">
-
-<h3 id="enemyName"></h3>
-<p id="enemyHP"></p>
-
-</div>
-
-<script>
-
-/* ===== DISPLAY ===== */
-
-const canvas =
-document.getElementById("gameCanvas");
-
-const ctx =
-canvas.getContext("2d");
-
-const WIDTH = 1280;
-const HEIGHT = 720;
-
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
-
-/* ===== MEMORY ===== */
-
-let PLAYER_X = 600;
-let PLAYER_Y = 600;
-
-let PLAYER_SPEED = 6;
-
-let CURRENT_MONSTER = null;
-
-let IN_BATTLE = false;
-
-/* ===== MONSTERS ===== */
-
-let MONSTERS = [
-
-{ NAME: "Flamara", HP: 18 },
-{ NAME: "Aquaff", HP: 20 },
-{ NAME: "Voltusk", HP: 17 },
-{ NAME: "Stoneel", HP: 22 }
-
-];
-
-/* ===== CAMERA ===== */
-
-let CAMERA_X = 0;
-let CAMERA_Y = 0;
-
-/* ===== INPUT ===== */
-
-function JOYPAD_INPUT(direction) {
-
-if (IN_BATTLE) return;
-
-if (direction === "up")
-CALL_MOVE_UP();
-
-if (direction === "down")
-CALL_MOVE_DOWN();
-
-if (direction === "left")
-CALL_MOVE_LEFT();
-
-if (direction === "right")
-CALL_MOVE_RIGHT();
-
-}
-
-/* ===== MOVEMENT ===== */
-
-function CALL_MOVE_UP() {
-
-PLAYER_Y -= PLAYER_SPEED;
-
-CALL_CHECK_ENCOUNTER();
-
-CALL_UPDATE_CAMERA();
-
-}
-
-function CALL_MOVE_DOWN() {
-
-PLAYER_Y += PLAYER_SPEED;
-
-CALL_CHECK_ENCOUNTER();
-
-CALL_UPDATE_CAMERA();
-
-}
-
-function CALL_MOVE_LEFT() {
-
-PLAYER_X -= PLAYER_SPEED;
-
-CALL_CHECK_ENCOUNTER();
-
-CALL_UPDATE_CAMERA();
-
-}
-
-function CALL_MOVE_RIGHT() {
-
-PLAYER_X += PLAYER_SPEED;
-
-CALL_CHECK_ENCOUNTER();
-
-CALL_UPDATE_CAMERA();
-
-}
-
-/* ===== CAMERA ===== */
-
-function CALL_UPDATE_CAMERA() {
-
-CAMERA_X =
-PLAYER_X -
-WIDTH / 2;
-
-CAMERA_Y =
-PLAYER_Y -
-HEIGHT / 2;
-
-}
-
-/* ===== WORLD ===== */
-
-function CALL_DRAW_WORLD() {
-
-for (
-let x = 0;
-x < 3000;
-x += 64
-) {
-
-for (
-let y = 0;
-y < 3000;
-y += 64
-) {
-
-ctx.fillStyle =
-"#2e7d32";
-
-ctx.fillRect(
-x,
-y,
-64,
-64
-);
-
-}
-
-}
-
-}
-
-/* ===== PLAYER ===== */
-
-function CALL_DRAW_PLAYER() {
-
-ctx.fillStyle =
-"black";
-
-ctx.fillRect(
-PLAYER_X,
-PLAYER_Y,
-40,
-40
-);
-
-}
-
-/* ===== ENCOUNTER ===== */
-
-function CALL_CHECK_ENCOUNTER() {
-
-let RANDOM =
-Math.random();
-
-if (RANDOM < 0.01) {
-
-CALL_START_BATTLE();
-
-}
-
-}
-
-/* ===== BATTLE ===== */
-
-function CALL_START_BATTLE() {
-
-IN_BATTLE = true;
-
-let INDEX =
-Math.floor(
-Math.random() *
-MONSTERS.length
-);
-
-CURRENT_MONSTER =
-MONSTERS[INDEX];
-
-document.getElementById(
-"enemyName"
-).innerText =
-CURRENT_MONSTER.NAME;
-
-document.getElementById(
-"enemyHP"
-).innerText =
-"HP: " +
-CURRENT_MONSTER.HP;
-
-document.getElementById(
-"battleBox"
-).style.display =
-"block";
-
-}
-
-/* ===== ATTACK ===== */
-
-function CALL_ATTACK() {
-
-if (!IN_BATTLE) return;
-
-CURRENT_MONSTER.HP -= 1;
-
-document.getElementById(
-"enemyHP"
-).innerText =
-"HP: " +
-CURRENT_MONSTER.HP;
-
-if (
-CURRENT_MONSTER.HP <= 0
-) {
-
-alert(
-"Enemy defeated!"
-);
-
-CALL_END_BATTLE();
-
-}
-
-}
-
-/* ===== END BATTLE ===== */
-
-function CALL_END_BATTLE() {
-
-IN_BATTLE = false;
-
-document.getElementById(
-"battleBox"
-).style.display =
-"none";
-
-}
-
-/* ===== SAVE ===== */
-
-function CALL_SAVE() {
-
-localStorage.setItem(
-"PLAYER_X",
-PLAYER_X
-);
-
-localStorage.setItem(
-"PLAYER_Y",
-PLAYER_Y
-);
-
-alert(
-"Game Saved"
-);
-
-}
-
-/* ===== LOAD ===== */
-
-function CALL_LOAD() {
-
-PLAYER_X =
-parseInt(
-localStorage.getItem(
-"PLAYER_X"
-)
-) || 600;
-
-PLAYER_Y =
-parseInt(
-localStorage.getItem(
-"PLAYER_Y"
-)
-) || 600;
-
-alert(
-"Game Loaded"
-);
-
-}
-
-/* ===== LOOP ===== */
-
-function CALL_GAME_LOOP() {
-
-ctx.clearRect(
-0,
-0,
-canvas.width,
-canvas.height
-);
-
-ctx.save();
-
-ctx.translate(
--CAMERA_X,
--CAMERA_Y
-);
-
-CALL_DRAW_WORLD();
-
-CALL_DRAW_PLAYER();
-
-ctx.restore();
-
-requestAnimationFrame(
-CALL_GAME_LOOP
-);
-
-}
-
-CALL_GAME_LOOP();
-
-</script>
-
+    <div id="game">
+        <canvas id="canvas" width="320" height="240"></canvas>
+        
+        <div id="ui">
+            <!-- Overworld dialog -->
+            <div id="dialog"></div>
+            
+            <!-- Battle UI -->
+            <div id="battle-ui">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <div>
+                        <div id="enemy-name" style="font-weight:bold;">Wild Rattata</div>
+                        <div class="health-bar"><div id="enemy-health" class="health"></div></div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div id="player-name" style="font-weight:bold;">Your Bulba</div>
+                        <div class="health-bar"><div id="player-health" class="health"></div></div>
+                    </div>
+                </div>
+                
+                <div id="battle-log" style="height:60px; background:#111; padding:8px; margin-bottom:10px; font-size:14px; overflow-y:auto;"></div>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <button onclick="useMove(0)">Tackle</button>
+                    <button onclick="useMove(1)">Vine Whip</button>
+                    <button onclick="useMove(2)">Growl</button>
+                    <button onclick="runAway()">Run</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Simple pixel-art style scaling
+        const SCALE = 2;
+        canvas.width = 320;
+        canvas.height = 240;
+        
+        // Game states
+        let gameState = 'overworld'; // 'overworld', 'battle'
+        
+        // Player
+        let player = {
+            x: 160,
+            y: 120,
+            dir: 'down',
+            moving: false
+        };
+        
+        // Simple map (grass tiles = 1, path = 0)
+        const mapWidth = 20;
+        const mapHeight = 15;
+        let map = [];
+        for (let y = 0; y < mapHeight; y++) {
+            map[y] = [];
+            for (let x = 0; x < mapWidth; x++) {
+                map[y][x] = (Math.random() > 0.6) ? 1 : 0; // mostly grass
+            }
+        }
+        
+        // Creatures (like Pokémon)
+        const creatures = [
+            { id: 1, name: "Bulba", type: "Grass", hp: 45, atk: 10, moves: ["Tackle", "Vine Whip", "Growl"] },
+            { id: 2, name: "Ratta", type: "Normal", hp: 30, atk: 12, moves: ["Tackle", "Quick Attack"] },
+            { id: 3, name: "Pikky", type: "Electric", hp: 35, atk: 14, moves: ["Thunder Shock", "Quick Attack"] }
+        ];
+        
+        let playerCreature = { ...creatures[0], currentHp: 45 };
+        let enemyCreature = null;
+        
+        // Controls for Android (touch + virtual buttons)
+        let keys = {};
+        let touchStartX = 0, touchStartY = 0;
+        
+        // Battle variables
+        let battleLog = [];
+        
+        function drawMap() {
+            ctx.fillStyle = '#0a3d0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const tileSize = 16;
+            
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
+                    const screenX = x * tileSize - player.x + canvas.width/2;
+                    const screenY = y * tileSize - player.y + canvas.height/2;
+                    
+                    if (map[y][x] === 1) {
+                        // Grass
+                        ctx.fillStyle = '#1a5a1a';
+                        ctx.fillRect(screenX, screenY, tileSize, tileSize);
+                        // Simple grass lines
+                        ctx.strokeStyle = '#0f3f0f';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(screenX + 4, screenY + 6);
+                        ctx.lineTo(screenX + 12, screenY + 10);
+                        ctx.stroke();
+                    } else {
+                        // Path
+                        ctx.fillStyle = '#8b5a2b';
+                        ctx.fillRect(screenX, screenY, tileSize, tileSize);
+                    }
+                }
+            }
+            
+            // Draw player (simple character)
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(canvas.width/2 - 8, canvas.height/2 - 12, 16, 20); // body
+            ctx.fillStyle = '#ffddaa';
+            ctx.fillRect(canvas.width/2 - 6, canvas.height/2 - 18, 12, 10); // head
+        }
+        
+        function draw() {
+            ctx.imageSmoothingEnabled = false;
+            drawMap();
+            
+            // Draw a few random "wild" indicators
+            if (gameState === 'overworld') {
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = '10px Courier New';
+                ctx.fillText('Walk around - Tap screen to move', 10, 20);
+            }
+        }
+        
+        function gameLoop() {
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Simple random encounter
+        function checkRandomEncounter() {
+            if (Math.random() < 0.08 && gameState === 'overworld') { // \~8% chance per frame when moving
+                startBattle();
+            }
+        }
+        
+        function startBattle() {
+            gameState = 'battle';
+            enemyCreature = { ...creatures[Math.floor(Math.random()*creatures.length)], currentHp: creatures[Math.floor(Math.random()*creatures.length)].hp };
+            
+            document.getElementById('battle-ui').style.display = 'flex';
+            document.getElementById('dialog').style.display = 'none';
+            
+            document.getElementById('enemy-name').textContent = `Wild ${enemyCreature.name}`;
+            document.getElementById('player-name').textContent = playerCreature.name;
+            
+            updateHealthBars();
+            addBattleLog(`A wild ${enemyCreature.name} appeared!`);
+        }
+        
+        function updateHealthBars() {
+            const playerPercent = (playerCreature.currentHp / playerCreature.hp) * 100;
+            const enemyPercent = (enemyCreature.currentHp / enemyCreature.hp) * 100;
+            
+            document.getElementById('player-health').style.width = `${Math.max(0, playerPercent)}%`;
+            document.getElementById('enemy-health').style.width = `${Math.max(0, enemyPercent)}%`;
+        }
+        
+        function addBattleLog(text) {
+            battleLog.push(text);
+            if (battleLog.length > 5) battleLog.shift();
+            document.getElementById('battle-log').innerHTML = battleLog.join('<br>');
+        }
+        
+        function useMove(moveIndex) {
+            if (!enemyCreature || playerCreature.currentHp <= 0) return;
+            
+            const moves = playerCreature.moves || ["Tackle", "Vine Whip"];
+            const moveName = moves[moveIndex % moves.length];
+            
+            // Player attack
+            const damage = Math.floor(playerCreature.atk * (0.8 + Math.random() * 0.6));
+            enemyCreature.currentHp -= damage;
+            addBattleLog(`Your ${playerCreature.name} used ${moveName}!`);
+            addBattleLog(`Dealt ${damage} damage!`);
+            
+            updateHealthBars();
+            
+            if (enemyCreature.currentHp <= 0) {
+                addBattleLog(`Wild ${enemyCreature.name} fainted! You win!`);
+                setTimeout(() => {
+                    endBattle();
+                }, 1500);
+                return;
+            }
+            
+            // Enemy turn (simple AI)
+            setTimeout(() => {
+                if (enemyCreature.currentHp <= 0) return;
+                
+                const enemyDamage = Math.floor(enemyCreature.atk * (0.7 + Math.random() * 0.5));
+                playerCreature.currentHp -= enemyDamage;
+                addBattleLog(`Wild ${enemyCreature.name} attacked!`);
+                addBattleLog(`You took ${enemyDamage} damage!`);
+                
+                updateHealthBars();
+                
+                if (playerCreature.currentHp <= 0) {
+                    addBattleLog(`Your ${playerCreature.name} fainted...`);
+                    setTimeout(() => endBattle(true), 1500);
+                }
+            }, 800);
+        }
+        
+        function runAway() {
+            if (Math.random() > 0.4) {
+                addBattleLog("Got away safely!");
+                setTimeout(endBattle, 800);
+            } else {
+                addBattleLog("Can't escape!");
+                // Enemy attacks anyway
+                setTimeout(() => {
+                    if (enemyCreature && enemyCreature.currentHp > 0) {
+                        const damage = Math.floor(enemyCreature.atk * 0.8);
+                        playerCreature.currentHp -= damage;
+                        addBattleLog(`Wild ${enemyCreature.name} attacked while you tried to run!`);
+                        updateHealthBars();
+                        
+                        if (playerCreature.currentHp <= 0) {
+                            addBattleLog(`Your ${playerCreature.name} fainted...`);
+                            setTimeout(() => endBattle(true), 1000);
+                        }
+                    }
+                }, 600);
+            }
+        }
+        
+        function endBattle(lost = false) {
+            gameState = 'overworld';
+            document.getElementById('battle-ui').style.display = 'none';
+            battleLog = [];
+            
+            if (!lost) {
+                showDialog(`You defeated the wild ${enemyCreature ? enemyCreature.name : ''}!`, 2000);
+            } else {
+                showDialog("You blacked out... (Game continues anyway)", 2500);
+                playerCreature.currentHp = Math.floor(playerCreature.hp / 2); // revive a bit
+            }
+            
+            enemyCreature = null;
+        }
+        
+        function showDialog(text, timeout = 3000) {
+            const dialog = document.getElementById('dialog');
+            dialog.textContent = text;
+            dialog.style.display = 'block';
+            setTimeout(() => {
+                dialog.style.display = 'none';
+            }, timeout);
+        }
+        
+        // Controls
+        function handleMovement(dx, dy) {
+            if (gameState !== 'overworld') return;
+            
+            player.x += dx * 4;
+            player.y += dy * 4;
+            
+            // Keep player in reasonable bounds
+            player.x = Math.max(50, Math.min(player.x, mapWidth*16 - 50));
+            player.y = Math.max(50, Math.min(player.y, mapHeight*16 - 50));
+            
+            checkRandomEncounter();
+        }
+        
+        // Keyboard support (for testing on PC)
+        window.addEventListener('keydown', e => {
+            if (gameState === 'battle') return;
+            
+            switch(e.key) {
+                case 'ArrowUp': case 'w': handleMovement(0, -1); break;
+                case 'ArrowDown': case 's': handleMovement(0, 1); break;
+                case 'ArrowLeft': case 'a': handleMovement(-1, 0); break;
+                case 'ArrowRight': case 'd': handleMovement(1, 0); break;
+            }
+        });
+        
+        // Touch controls for Android
+        canvas.addEventListener('touchstart', e => {
+            if (gameState === 'battle') return;
+            
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchend', e => {
+            if (gameState === 'battle') return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+            
+            if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    handleMovement(dx > 0 ? 1 : -1, 0);
+                } else {
+                    handleMovement(0, dy > 0 ? 1 : -1);
+                }
+            } else {
+                // Tap to move forward in facing direction or random encounter chance
+                handleMovement(0, 1); // simple forward bias
+            }
+        });
+        
+        // Make it more fun - auto random movement hint
+        setInterval(() => {
+            if (gameState === 'overworld' && Math.random() < 0.3) {
+                const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+                const randDir = dirs[Math.floor(Math.random()*4)];
+                handleMovement(randDir[0], randDir[1]);
+            }
+        }, 600);
+        
+        // Start the game
+        function startGame() {
+            showDialog("Welcome to PokéQuest!\nWalk around (swipe) to find wild creatures!", 4000);
+            gameLoop();
+        }
+        
+        // Initialize
+        window.onload = startGame;
+    </script>
 </body>
 </html>
