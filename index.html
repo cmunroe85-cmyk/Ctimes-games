@@ -1,128 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Ultimate Archery Game</title>
+<title>My Monster Catch Game</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body {
   margin: 0;
-  background: #1a1a1a;
+  background: #222;
   color: white;
   text-align: center;
   font-family: Arial;
 }
 
 canvas {
-  background: linear-gradient(#87CEEB, #4CAF50);
+  background: #6ecb63;
   display: block;
   margin: auto;
 }
 
-h1 {
-  margin: 10px;
+#controls {
+  margin-top: 10px;
+}
+
+button {
+  padding: 12px 18px;
+  font-size: 18px;
+  margin: 4px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🏹 Ultimate Archery Game</h1>
+<h1>My Monster Catch Game</h1>
 
-<canvas id="gameCanvas" width="400" height="600"></canvas>
+<canvas id="gameCanvas" width="400" height="500"></canvas>
+
+<div id="controls">
+<button onclick="move('up')">⬆️</button><br>
+<button onclick="move('left')">⬅️</button>
+<button onclick="move('down')">⬇️</button>
+<button onclick="move('right')">➡️</button>
+</div>
 
 <script>
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-let arrow = {
-  x: 50,
-  y: 500,
-  vx: 0,
-  vy: 0,
-  flying: false
+let player = {
+  x: 180,
+  y: 230,
+  size: 20
 };
 
-let gravity = 0.4;
-
-let target = {
-  x: 320,
-  y: 150,
-  radius: 30,
-  speed: 2
+let monster = {
+  x: Math.random() * 360,
+  y: Math.random() * 460,
+  size: 20,
+  alive: true
 };
 
-let wind = Math.random() * 0.1 - 0.05;
+let monstersCaught = 0;
 
-let score = 0;
+function drawPlayer() {
+  ctx.fillStyle = "blue";
+  ctx.fillRect(
+    player.x,
+    player.y,
+    player.size,
+    player.size
+  );
+}
 
-let aiming = false;
-let startX = 0;
-let startY = 0;
+function drawMonster() {
 
-function drawTarget() {
+  if (!monster.alive) return;
+
   ctx.fillStyle = "red";
-  ctx.beginPath();
-  ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
-  ctx.fill();
 
-  ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.arc(target.x, target.y, 10, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawArrow() {
-  ctx.fillStyle = "black";
-  ctx.fillRect(arrow.x, arrow.y, 20, 4);
-}
-
-function moveTarget() {
-  target.x += target.speed;
-
-  if (target.x > canvas.width - 30 || target.x < 250) {
-    target.speed *= -1;
-  }
-}
-
-function updateArrow() {
-
-  if (!arrow.flying) return;
-
-  arrow.x += arrow.vx;
-  arrow.y += arrow.vy;
-
-  arrow.vy += gravity;
-  arrow.vx += wind;
-
-  if (arrow.y > canvas.height) {
-    resetArrow();
-  }
-
-  let dx = arrow.x - target.x;
-  let dy = arrow.y - target.y;
-  let distance = Math.sqrt(dx * dx + dy * dy);
-
-  if (distance < target.radius) {
-
-    score++;
-
-    wind = Math.random() * 0.1 - 0.05;
-
-    resetArrow();
-  }
-
-}
-
-function resetArrow() {
-
-  arrow.x = 50;
-  arrow.y = 500;
-  arrow.vx = 0;
-  arrow.vy = 0;
-  arrow.flying = false;
+  ctx.fillRect(
+    monster.x,
+    monster.y,
+    monster.size,
+    monster.size
+  );
 
 }
 
@@ -131,13 +95,83 @@ function drawUI() {
   ctx.fillStyle = "white";
   ctx.font = "18px Arial";
 
-  ctx.fillText("Score: " + score, 10, 25);
-
   ctx.fillText(
-    "Wind: " + wind.toFixed(2),
+    "Caught: " + monstersCaught,
     10,
+    25
+  );
 
-    requestAnimationFrame(gameLoop);
+}
+
+function checkCatch() {
+
+  let dx =
+    player.x - monster.x;
+
+  let dy =
+    player.y - monster.y;
+
+  let distance =
+    Math.sqrt(dx * dx + dy * dy);
+
+  if (distance < 25) {
+
+    monster.alive = false;
+
+    monstersCaught++;
+
+    setTimeout(() => {
+
+      monster.x =
+        Math.random() * 360;
+
+      monster.y =
+        Math.random() * 460;
+
+      monster.alive = true;
+
+    }, 1000);
+
+  }
+
+}
+
+function move(direction) {
+
+  if (direction === "up")
+    player.y -= 20;
+
+  if (direction === "down")
+    player.y += 20;
+
+  if (direction === "left")
+    player.x -= 20;
+
+  if (direction === "right")
+    player.x += 20;
+
+  checkCatch();
+
+}
+
+function gameLoop() {
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  drawPlayer();
+
+  drawMonster();
+
+  drawUI();
+
+  requestAnimationFrame(
+    gameLoop
+  );
 
 }
 
