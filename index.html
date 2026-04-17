@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>4K Game Engine</title>
+<title>Cinnamon</title>
 
 <meta name="viewport"
 content="width=device-width, initial-scale=1">
@@ -22,190 +22,425 @@ canvas {
   width: 100vw;
   height: 85vh;
 }
+
+button {
+  padding: 10px;
+  margin: 3px;
+}
 </style>
 </head>
 
 <body>
 
-<h2>4K Resolution Game</h2>
+<h2>Cinnamon</h2>
 
 <canvas id="gameCanvas"></canvas>
 
 <div>
-<button onclick="move('up')">⬆️</button><br>
-<button onclick="move('left')">⬅️</button>
-<button onclick="move('down')">⬇️</button>
-<button onclick="move('right')">➡️</button>
+<button onclick="JOYPAD_INPUT('up')">⬆️</button><br>
+<button onclick="JOYPAD_INPUT('left')">⬅️</button>
+<button onclick="JOYPAD_INPUT('down')">⬇️</button>
+<button onclick="JOYPAD_INPUT('right')">➡️</button>
+<button onclick="CALL_ATTACK()">⚔️ Attack</button>
+<button onclick="CALL_SAVE()">💾 Save</button>
+<button onclick="CALL_LOAD()">📂 Load</button>
+</div>
+
+<div id="battleBox"
+style="
+display:none;
+position:fixed;
+bottom:0;
+width:100%;
+background:black;
+padding:12px;
+">
+
+<h3 id="enemyName"></h3>
+<p id="enemyHP"></p>
+
 </div>
 
 <script>
 
+/* ===== DISPLAY SETUP ===== */
+
 const canvas =
-  document.getElementById("gameCanvas");
+document.getElementById("gameCanvas");
 
 const ctx =
-  canvas.getContext("2d");
+canvas.getContext("2d");
 
-const BASE_WIDTH = 3840;
-const BASE_HEIGHT = 2160;
+const WIDTH = 1280;
+const HEIGHT = 720;
 
-function setupCanvas() {
+canvas.width = WIDTH;
+canvas.height = HEIGHT;
 
-  const ratio =
-    window.devicePixelRatio || 1;
+/* ===== MEMORY ===== */
 
-  canvas.width =
-    BASE_WIDTH * ratio;
+let PLAYER_X = 600;
+let PLAYER_Y = 600;
 
-  canvas.height =
-    BASE_HEIGHT * ratio;
+let PLAYER_SPEED = 6;
 
-  ctx.setTransform(
-    ratio,
-    0,
-    0,
-    ratio,
-    0,
-    0
-  );
+let PLAYER_LEVEL = 1;
+
+let CURRENT_MONSTER = null;
+
+let IN_BATTLE = false;
+
+/* ===== MONSTER DATA ===== */
+
+let MONSTERS = [
+
+{
+NAME: "Flamara",
+HP: 18,
+ATTACK: 6
+},
+
+{
+NAME: "Aquaff",
+HP: 20,
+ATTACK: 5
+},
+
+{
+NAME: "Mossling",
+HP: 16,
+ATTACK: 7
+},
+
+{
+NAME: "Voltusk",
+HP: 17,
+ATTACK: 8
+},
+
+{
+NAME: "Stoneel",
+HP: 22,
+ATTACK: 4
+}
+
+];
+
+/* ===== CAMERA ===== */
+
+let CAMERA_X = 0;
+let CAMERA_Y = 0;
+
+/* ===== SPRITES ===== */
+
+const PLAYER_SPRITE =
+new Image();
+
+PLAYER_SPRITE.src =
+"https://i.imgur.com/6X12GQk.png";
+
+const GRASS_TEXTURE =
+new Image();
+
+GRASS_TEXTURE.src =
+"https://i.imgur.com/2R7m6YH.png";
+
+/* ===== INPUT ROUTINE ===== */
+
+function JOYPAD_INPUT(direction) {
+
+if (IN_BATTLE) return;
+
+if (direction === "up")
+CALL_MOVE_UP();
+
+if (direction === "down")
+CALL_MOVE_DOWN();
+
+if (direction === "left")
+CALL_MOVE_LEFT();
+
+if (direction === "right")
+CALL_MOVE_RIGHT();
 
 }
 
-setupCanvas();
+/* ===== MOVEMENT ROUTINES ===== */
 
-let camera = {
-  x: 0,
-  y: 0
-};
+function CALL_MOVE_UP() {
 
-let worldSize = 8000;
+PLAYER_Y -= PLAYER_SPEED;
 
-let player = {
-  x: 400,
-  y: 400,
-  size: 80,
-  speed: 20
-};
+CALL_CHECK_ENCOUNTER();
 
-function drawWorld() {
-
-  ctx.fillStyle = "#2e8b57";
-
-  ctx.fillRect(
-    0,
-    0,
-    worldSize,
-    worldSize
-  );
-
-  ctx.strokeStyle = "#ffffff";
-
-  for (
-    let x = 0;
-    x < worldSize;
-    x += 200
-  ) {
-
-    ctx.beginPath();
-
-    ctx.moveTo(x, 0);
-
-    ctx.lineTo(x, worldSize);
-
-    ctx.stroke();
-
-  }
-
-  for (
-    let y = 0;
-    y < worldSize;
-    y += 200
-  ) {
-
-    ctx.beginPath();
-
-    ctx.moveTo(0, y);
-
-    ctx.lineTo(worldSize, y);
-
-    ctx.stroke();
-
-  }
+CALL_UPDATE_CAMERA();
 
 }
 
-function drawPlayer() {
+function CALL_MOVE_DOWN() {
 
-  ctx.fillStyle = "blue";
+PLAYER_Y += PLAYER_SPEED;
 
-  ctx.fillRect(
-    player.x - camera.x,
-    player.y - camera.y,
-    player.size,
-    player.size
-  );
+CALL_CHECK_ENCOUNTER();
+
+CALL_UPDATE_CAMERA();
 
 }
 
-function move(direction) {
+function CALL_MOVE_LEFT() {
 
-  if (direction === "up")
-    player.y -= player.speed;
+PLAYER_X -= PLAYER_SPEED;
 
-  if (direction === "down")
-    player.y += player.speed;
+CALL_CHECK_ENCOUNTER();
 
-  if (direction === "left")
-    player.x -= player.speed;
-
-  if (direction === "right")
-    player.x += player.speed;
-
-  updateCamera();
+CALL_UPDATE_CAMERA();
 
 }
 
-function updateCamera() {
+function CALL_MOVE_RIGHT() {
 
-  camera.x =
-    player.x -
-    BASE_WIDTH / 2;
+PLAYER_X += PLAYER_SPEED;
 
-  camera.y =
-    player.y -
-    BASE_HEIGHT / 2;
+CALL_CHECK_ENCOUNTER();
+
+CALL_UPDATE_CAMERA();
 
 }
 
-function gameLoop() {
+/* ===== CAMERA ROUTINE ===== */
 
-  ctx.clearRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
+function CALL_UPDATE_CAMERA() {
 
-  ctx.save();
+CAMERA_X =
+PLAYER_X -
+WIDTH / 2;
 
-  ctx.translate(
-    -camera.x,
-    -camera.y
-  );
-
-  drawWorld();
-
-  drawPlayer();
-
-  ctx.restore();
-
-  requestAnimationFrame(
-    gameLoop
-  );
+CAMERA_Y =
+PLAYER_Y -
+HEIGHT / 2;
 
 }
 
-gameLoop();
+/* ===== WORLD DRAW ===== */
+
+function CALL_DRAW_WORLD() {
+
+for (
+let x = 0;
+x < 3000;
+x += 256
+) {
+
+for (
+let y = 0;
+y < 3000;
+y += 256
+) {
+
+ctx.drawImage(
+GRASS_TEXTURE,
+x,
+y,
+256,
+256
+);
+
+}
+
+}
+
+}
+
+/* ===== PLAYER DRAW ===== */
+
+function CALL_DRAW_PLAYER() {
+
+ctx.drawImage(
+PLAYER_SPRITE,
+PLAYER_X,
+PLAYER_Y,
+96,
+96
+);
+
+}
+
+/* ===== ENCOUNTER ROUTINE ===== */
+
+function CALL_CHECK_ENCOUNTER() {
+
+let RANDOM =
+Math.random();
+
+if (RANDOM < 0.01) {
+
+CALL_START_BATTLE();
+
+}
+
+}
+
+/* ===== BATTLE ROUTINE ===== */
+
+function CALL_START_BATTLE() {
+
+IN_BATTLE = true;
+
+let INDEX =
+Math.floor(
+Math.random() *
+MONSTERS.length
+);
+
+CURRENT_MONSTER =
+MONSTERS[INDEX];
+
+document.getElementById(
+"enemyName"
+).innerText =
+CURRENT_MONSTER.NAME;
+
+document.getElementById(
+"enemyHP"
+).innerText =
+"HP: " +
+CURRENT_MONSTER.HP;
+
+document.getElementById(
+"battleBox"
+).style.display =
+"block";
+
+}
+
+/* ===== ATTACK ROUTINE ===== */
+
+function CALL_ATTACK() {
+
+if (!IN_BATTLE) return;
+
+CURRENT_MONSTER.HP -= 1;
+
+document.getElementById(
+"enemyHP"
+).innerText =
+"HP: " +
+CURRENT_MONSTER.HP;
+
+if (
+CURRENT_MONSTER.HP <= 0
+) {
+
+alert(
+"Enemy defeated!"
+);
+
+CALL_END_BATTLE();
+
+}
+
+}
+
+/* ===== END BATTLE ===== */
+
+function CALL_END_BATTLE() {
+
+IN_BATTLE = false;
+
+document.getElementById(
+"battleBox"
+).style.display =
+"none";
+
+}
+
+/* ===== SAVE SYSTEM ===== */
+
+function CALL_SAVE() {
+
+localStorage.setItem(
+"PLAYER_X",
+PLAYER_X
+);
+
+localStorage.setItem(
+"PLAYER_Y",
+PLAYER_Y
+);
+
+localStorage.setItem(
+"PLAYER_LEVEL",
+PLAYER_LEVEL
+);
+
+alert(
+"Game Saved"
+);
+
+}
+
+/* ===== LOAD SYSTEM ===== */
+
+function CALL_LOAD() {
+
+PLAYER_X =
+parseInt(
+localStorage.getItem(
+"PLAYER_X"
+)
+) || 600;
+
+PLAYER_Y =
+parseInt(
+localStorage.getItem(
+"PLAYER_Y"
+)
+) || 600;
+
+PLAYER_LEVEL =
+parseInt(
+localStorage.getItem(
+"PLAYER_LEVEL"
+)
+) || 1;
+
+alert(
+"Game Loaded"
+);
+
+}
+
+/* ===== GAME LOOP ===== */
+
+function CALL_GAME_LOOP() {
+
+ctx.clearRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+ctx.save();
+
+ctx.translate(
+-CAMERA_X,
+-CAMERA_Y
+);
+
+CALL_DRAW_WORLD();
+
+CALL_DRAW_PLAYER();
+
+ctx.restore();
+
+requestAnimationFrame(
+CALL_GAME_LOOP
+);
+
+}
+
+CALL_GAME_LOOP();
 
 </script>
 
