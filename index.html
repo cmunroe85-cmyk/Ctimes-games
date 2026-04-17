@@ -1,32 +1,74 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My Pet Turtle 🐢</title>
+    <title>Simple Pong</title>
     <style>
-        body {
-            margin: 0; padding: 0; background: #0a3d0a; font-family: 'Courier New', monospace; color: #fff;
-            text-align: center; overflow: hidden;
+        canvas { background: #000; display: block; margin: 20px auto; border: 2px solid #fff; }
+    </style>
+</head>
+<body>
+    <canvas id="pong" width="600" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById("pong");
+        const ctx = canvas.getContext("2d");
+
+        // Game objects
+        const ball = { x: 300, y: 200, dx: 4, dy: 4, radius: 10 };
+        const paddleHeight = 80, paddleWidth = 10;
+        const player = { x: 0, y: 160 };
+        const ai = { x: 590, y: 160 };
+
+        // Draw functions
+        function drawRect(x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
         }
-        #game {
-            width: 100vw; height: 100vh; position: relative;
+
+        function drawCircle(x, y, r, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
         }
-        canvas {
-            image-rendering: pixelated; display: block; margin: 20px auto; background: #1a5a1a; border: 6px solid #ffcc00;
-            max-width: 95%; max-height: 60%;
+
+        // Mouse control for Player
+        canvas.addEventListener("mousemove", e => {
+            let rect = canvas.getBoundingClientRect();
+            player.y = e.clientY - rect.top - paddleHeight / 2;
+        });
+
+        function update() {
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // Simple AI logic: follows the ball
+            ai.y += (ball.y - (ai.y + paddleHeight / 2)) * 0.1;
+
+            // Wall collisions (top and bottom)
+            if (ball.y < 0 || ball.y > canvas.height) ball.dy *= -1;
+
+            // Paddle collisions
+            let paddle = (ball.x < canvas.width / 2) ? player : ai;
+            if (ball.x < paddle.x + paddleWidth && ball.x > paddle.x && 
+                ball.y > paddle.y && ball.y < paddle.y + paddleHeight) {
+                ball.dx *= -1.1; // Speed up slightly after each hit
+            }
+
+            // Score/Reset if ball goes out of bounds
+            if (ball.x < 0 || ball.x > canvas.width) {
+                ball.x = 300; ball.y = 200; ball.dx = 4;
+            }
         }
-        .stats {
-            display: flex; justify-content: center; gap: 30px; margin: 15px; font-size: 18px;
+
+        function game() {
+            update();
+            drawRect(0, 0, 600, 400, "#000"); // Clear background
+            drawRect(player.x, player.y, paddleWidth, paddleHeight, "#fff"); // Player
+            drawRect(ai.x, ai.y, paddleWidth, paddleHeight, "#fff"); // AI
+            drawCircle(ball.x, ball.y, ball.radius, "#fff"); // Ball
+            requestAnimationFrame(game);
         }
-        .bar-container {
-            width: 180px;
-        }
-        .bar {
-            height: 18px; background: #333; border: 3px solid #fff; position: relative; margin-top: 5px;
-        }
-        .fill {
-            height: 100%; background: #22ff88; transition: width 0.4s;
-        }
-        button {
-            background: #ffcc00; color: #000; border
+        game();
+    </script>
+</body>
+</html>
