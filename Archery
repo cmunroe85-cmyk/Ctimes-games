@@ -1,1 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ultimate Archery Game</title>
 
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+  margin: 0;
+  background: #1a1a1a;
+  color: white;
+  text-align: center;
+  font-family: Arial;
+}
+
+canvas {
+  background: linear-gradient(#87CEEB, #4CAF50);
+  display: block;
+  margin: auto;
+}
+
+h1 {
+  margin: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🏹 Ultimate Archery Game</h1>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<script>
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let arrow = {
+  x: 50,
+  y: 500,
+  vx: 0,
+  vy: 0,
+  flying: false
+};
+
+let gravity = 0.4;
+
+let target = {
+  x: 320,
+  y: 150,
+  radius: 30,
+  speed: 2
+};
+
+let wind = Math.random() * 0.1 - 0.05;
+
+let score = 0;
+
+let aiming = false;
+let startX = 0;
+let startY = 0;
+
+function drawTarget() {
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+  ctx.arc(target.x, target.y, 10, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawArrow() {
+  ctx.fillStyle = "black";
+  ctx.fillRect(arrow.x, arrow.y, 20, 4);
+}
+
+function moveTarget() {
+  target.x += target.speed;
+
+  if (target.x > canvas.width - 30 || target.x < 250) {
+    target.speed *= -1;
+  }
+}
+
+function updateArrow() {
+
+  if (!arrow.flying) return;
+
+  arrow.x += arrow.vx;
+  arrow.y += arrow.vy;
+
+  arrow.vy += gravity;
+  arrow.vx += wind;
+
+  if (arrow.y > canvas.height) {
+    resetArrow();
+  }
+
+  let dx = arrow.x - target.x;
+  let dy = arrow.y - target.y;
+  let distance = Math.sqrt(dx * dx + dy * dy);
+
+  if (distance < target.radius) {
+
+    score++;
+
+    wind = Math.random() * 0.1 - 0.05;
+
+    resetArrow();
+  }
+
+}
+
+function resetArrow() {
+
+  arrow.x = 50;
+  arrow.y = 500;
+  arrow.vx = 0;
+  arrow.vy = 0;
+  arrow.flying = false;
+
+}
+
+function drawUI() {
+
+  ctx.fillStyle = "white";
+  ctx.font = "18px Arial";
+
+  ctx.fillText("Score: " + score, 10, 25);
+
+  ctx.fillText(
+    "Wind: " + wind.toFixed(2),
+    10,
